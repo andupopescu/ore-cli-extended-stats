@@ -17,7 +17,7 @@ impl Miner {
 
         // Confirm the user wants to close.
         if !ask_confirm(
-            format!("{} You have {} ORE staked in this account.\nAre you sure you want to {}close this account? [Y/n]", 
+            format!("{} You have {} ORE staked in this account.\nAre you sure you want to {}close this account? [Y/n]",
                 "WARNING".yellow(),
                 amount_to_ui_amount(proof.balance, ore_api::consts::TOKEN_DECIMALS),
                 if proof.balance.gt(&0) { "claim your stake and "} else { "" }
@@ -35,9 +35,9 @@ impl Miner {
             .await;
         }
 
-        // Submit close transaction
+        // Submit deregister transaction
         let ix = ore_api::instruction::close(signer.pubkey());
-        self.send_and_confirm(&[ix], ComputeBudget::Dynamic, false)
+        self.send_and_confirm(&[ix], ComputeBudget::Dynamic, false, false)
             .await
             .ok();
     }
