@@ -9,7 +9,9 @@ impl Miner {
     pub async fn config(&self) {
         let config = get_config(&self.rpc_client).await;
         println!("{}: {}", "Last reset".bold(), config.last_reset_at);
-        println!("{}: {}", "Top balance".bold(), config.top_balance);
+        println!("{}: {} ORE", "Top balance".bold(), amount_u64_to_string(config.top_balance));
+        println!("{}: {}", "Min difficulty".bold(), config.min_difficulty);
+        println!("{}: {} ORE", "Base reward rate".bold(), amount_u64_to_string(config.base_reward_rate));
         println!(
             "{}: {} ORE",
             "Top stake".bold(),
