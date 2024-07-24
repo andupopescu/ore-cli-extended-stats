@@ -69,9 +69,7 @@ impl Miner {
 
 		let miner_name=env::var("MINER_NAME").unwrap_or("Unnamed Miner".to_string());
 		let wallet_name=env::var("WALLET_NAME").unwrap_or("Unnamed Wallet".to_string());
-		let rig_wattage_idle: f64 = env::var("MINER_WATTAGE_IDLE").ok().and_then(|x| x.parse::<f64>().ok()).unwrap_or(10.0);
-		let rig_wattage_busy: f64 = env::var("MINER_WATTAGE_BUSY").ok().and_then(|x| x.parse::<f64>().ok()).unwrap_or(100.0);
-		let cost_per_kw_hour: f64 = env::var("MINER_COST_PER_KILOWATT_HOUR").ok().and_then(|x| x.parse::<f64>().ok()).unwrap_or(0.30);
+		let rig_cost_per_hour: f64 = env::var("CLOUD_COST_PER_HOUR").ok().and_then(|x| x.parse::<f64>().ok()).unwrap_or(1.0);
 		let rig_desired_difficulty_level: u32 = env::var("MINER_DESIRED_DIFFICULTY_LEVEL").ok().and_then(|x| x.parse::<u32>().ok()).unwrap_or(13);
 		let stats_logfile=env::var("STATS_LOGFILE").unwrap_or("".to_string());
 	
@@ -87,9 +85,31 @@ impl Miner {
 		let mut log_hash=String::from("");
 		let log_tx=String::from("");
 		log_startup+=format!("{}\n", green_separator_line).as_str();
-		log_startup+=format!("| Rig Wattage When Idle: {}W\n", rig_wattage_idle.to_string().bold()).as_str();
-		log_startup+=format!("| Rig Wattage When Busy: {}W\n", rig_wattage_busy.to_string().bold()).as_str();
-		log_startup+=format!("| Cost of electric per kWHr: ${}\n", cost_per_kw_hour.to_string().bold()).as_str();
+		
+		println!("Debug: Attempting to read CLOUD_COST_PER_HOUR");
+		let _rig_cost_per_hour: f64 = match env::var("CLOUD_COST_PER_HOUR") {
+			Ok(value) => {
+				println!("Debug: CLOUD_COST_PER_HOUR read as '{}'", value);
+				match value.parse::<f64>() {
+					Ok(parsed) => {
+						println!("Debug: Successfully parsed CLOUD_COST_PER_HOUR as {}", parsed);
+						parsed
+					},
+					Err(e) => {
+						println!("Debug: Failed to parse CLOUD_COST_PER_HOUR '{}': {}", value, e);
+						0.0 // Default value
+					}
+				}
+			},
+			Err(e) => {
+				println!("Debug: Failed to read CLOUD_COST_PER_HOUR: {}", e);
+				0.0 // Default value
+			}
+		};
+
+		println!("Debug: Final rig_cost_per_hour value: {}", rig_cost_per_hour);
+		log_startup+=format!("| Cloud cost per hour: ${:.2}\n", rig_cost_per_hour).as_str();
+		
 		log_startup+=format!("| Wallet name: {}\n", wallet_name.bold()).as_str();
 		_current_ore_price=self.load_ore_price();
 		_current_sol_price=self.load_sol_price();
@@ -271,29 +291,27 @@ impl Miner {
 					format!("[~{:.4}% of supply]", (session_ore_mined / (pass-1) as f64) * 100.0).dimmed(),
 				).as_str();
 
-				log_stats+=format!("|         Session Summary: {:>17}               {:>11}        Cost (Electric)\n", "Profit", "Cost").as_str();
 				
-				let session_kwatts_used=(rig_wattage_busy/1000.0) * (pass-1) as f64 / 60.0;	// (MINER_WATTAGE_BUSY/1000.0) * (pass-1) / number of passes per hour
-				log_stats+=format!("|                  Tokens: {} ORE           {} SOL    {:.3}kW for {:.0}W rig\n",
+				log_stats+=format!("|         Session Summary: {:>17}               {:>11}        Cost (Cloud)\n", "Profit", "Cost").as_str();
+
+				let session_duration_hours = (pass - 1) as f64 / 60.0;
+				let cloud_usage_cost = rig_cost_per_hour * session_duration_hours;
+				
+				log_stats+=format!("|                  Tokens: {} ORE           {} SOL    {:.3} hours @ ${:.2}/hour\n",
 					format!("{:>17.11}", session_ore_mined).green(),
 					format!("{:>11.6}", session_sol_used).bright_cyan(),
-					// (MINER_WATTAGE_X/1000.0) * (pass-1) / number of passes per hour
-					session_kwatts_used,
-					rig_wattage_busy,
+					session_duration_hours,
+					rig_cost_per_hour,
 				).as_str();
-
-				log_stats+=format!("|              In dollars: {:>17.02} USD           {:>11.2} USD    {:.2} @ ${:.2} per kW/Hr\n",
+				
+				log_stats+=format!("|              In dollars: {:>17.02} USD           {:>11.2} USD    {:.2} USD\n",
 					(session_ore_mined * _current_ore_price),
 					(session_sol_used * _current_sol_price),
-					// Cost per minute * watts used * number of minutes mined for
-					// (ELECTRICITY_COST_PER_KILOWATT_HOUR/60) * (MINER_WATTAGE_X/1000.0) * passes/ number of passes per hour
-					cost_per_kw_hour * session_kwatts_used,
-					cost_per_kw_hour,
+					cloud_usage_cost,
 				).as_str();
-
+				
 				log_stats+=format!("|          Profitablility: {} USD\n",
-					// Mined Ore - SOL Spent - Electic Cost
-					format!("{:>17.2}", (session_ore_mined * _current_ore_price) - (session_sol_used * _current_sol_price) - (cost_per_kw_hour * session_kwatts_used)).bright_green(),
+					format!("{:>17.2}", (session_ore_mined * _current_ore_price) - (session_sol_used * _current_sol_price) - cloud_usage_cost).bright_green(),
 				).as_str();
 
 				log_stats+=format!("| Total Hashes in session: {:.1}M\t\tAverage Hashes per pass: {:.0}\t\tThreads: {}\n",

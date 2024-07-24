@@ -28,7 +28,7 @@ The instructions presented here are for using a linux environment but also work 
 
 Once you have Rust installed, you can build the Ore CLI by running the following command in the ore-cli folder:
 ```sh
-cd ~/ore2/ore-cli
+cd ~/ore2/ore-cli-extended-stats
 ./build_and_mine.sh
 ```
 The first build can be slow so please be patient while each library is compiled. Subsequent rebuilds will be significantly quicker. If the compilation fails, errors will be shown on screen for you to rectify.
