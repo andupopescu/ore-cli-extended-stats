@@ -1,5 +1,7 @@
 use std::time::Duration;
 use std::time::Instant;
+use std::fs::File;
+use std::io::{BufReader, BufRead};
 
 use colored::*;
 use solana_client::{
@@ -70,6 +72,10 @@ impl Miner {
 			}
 		}
 
+        // Read priority fee from environment file
+        let priority_fee = self.load_priority_fee();
+        println!("Priority Fee: {} lamports", priority_fee);
+
         // Set compute units
         let mut final_ixs = vec![];
         match compute_budget {
@@ -82,7 +88,7 @@ impl Miner {
             }
         }
         final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(
-            self.priority_fee,
+            priority_fee,
         ));
         final_ixs.extend_from_slice(ixs);
 
@@ -122,11 +128,12 @@ impl Miner {
 	
 					// Skip confirmation
                     if skip_confirm {
-						let mess=format!("[{}{}]  Attempt {}: Sent: {}",
+						let mess=format!("[{}{}]  Attempt {}: Sent: {} Priority Fee: {}",
 							submit_start_time.elapsed().as_secs().to_string().dimmed(),
 							"s".dimmed(),
 							attempts,
 							sig.to_string().dimmed(),
+							priority_fee,
 						);
                         progress_bar.finish_with_message(mess.clone());
 						log_tx+=mess.as_str();
@@ -254,6 +261,35 @@ impl Miner {
 			error_message+additional_text
 		}
 	}
+
+    //read the latest priority fee from the file if file is not there use the default value
+	fn load_priority_fee(&self) -> u64 {
+		let file_path = "./priorityFee.txt";
+		let default_value = self.priority_fee;
+
+		match File::open(file_path) {
+			Ok(file) => {
+				let reader = BufReader::new(file);
+				if let Some(Ok(line)) = reader.lines().next() {
+					match line.trim().parse::<u64>() {
+						Ok(value) => value,
+						Err(_) => {
+							eprintln!("Error: Failed to parse priority fee from {}", file_path);
+							default_value
+						}
+					}
+				} else {
+					eprintln!("Error: Failed to read priority fee from {}", file_path);
+					default_value
+				}
+			},
+			Err(_) => {
+				eprintln!("Error: Failed to open {}", file_path);
+				default_value
+			}
+		}
+	}
+
 
     // TODO
     fn _simulate(&self) {

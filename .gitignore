@@ -11,3 +11,4 @@ cv_debug.log
 node_modules
 dashboard/build
 dashboard/public/dashboarddata
+priorityFee.txt
