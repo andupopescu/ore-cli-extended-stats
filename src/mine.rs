@@ -8,6 +8,8 @@ use std::process::Command;
 use humantime::format_duration;
 use systemstat::{System, Platform};
 use chrono::prelude::*;
+use std::collections::VecDeque;
+
 
 use colored::*;
 use drillx::{
@@ -35,9 +37,86 @@ use crate::{
     Miner,
 };
 
+struct BaseRateInfo {
+    rate: f64,
+    change: f64,
+    trend: char,
+}
+
+fn update_base_rate_history(history: &mut VecDeque<BaseRateInfo>, new_rate: f64) {
+    let (change, trend) = if let Some(last_rate) = history.back() {
+        let change_percentage = (new_rate - last_rate.rate) / last_rate.rate * 100.0;
+        let trend = if change_percentage > 0.0 { '▲' } else if change_percentage < 0.0 { '▼' } else { '─' };
+        (change_percentage, trend)
+    } else {
+        (0.0, '─')
+    };
+
+    history.push_back(BaseRateInfo {
+        rate: new_rate,
+        change,
+        trend,
+    });
+
+    if history.len() > 10 {
+        history.pop_front();
+    }
+}
+
+const GRAINS_PER_ORE: u64 = 100_000_000_000; // 100 billion grains per ORE
+
+fn format_base_rate_change_table(history: &VecDeque<BaseRateInfo>) -> String {
+    let mut table = String::new();
+    table += "|------------|-------|-------|-------|-------|-------|-------|-------|-------|-------|-------|\n";
+    table += "| Pass #     |     1 |     2 |     3 |     4 |     5 |     6 |     7 |     8 |     9 |    10 |\n";
+    table += "|------------|-------|-------|-------|-------|-------|-------|-------|-------|-------|-------|\n";
+    
+    // Base Rate row (in grains)
+    table += "| Base Rate  |";
+    for info in history {
+        let grains = (info.rate * GRAINS_PER_ORE as f64).round() as u64;
+        table += &format!("{:7}|", grains);
+    }
+    table += "\n";
+
+    // Change row
+    table += "| Change     |";
+    for info in history {
+        if info.change == 0.0 {
+            table += "   -   |";
+        } else {
+            let change_str = format!("{:+6.1}%", info.change);
+            if info.change > 0.0 {
+                table += &format!("{}", change_str.green());
+            } else {
+                table += &format!("{}", change_str.red());
+            }
+            table += "|";
+        }
+    }
+    table += "\n";
+
+    // Trend row
+    table += "| Trend      |";
+    for info in history {
+        let trend_str = match info.trend {
+            '▲' => format!("   {}   ", "▲".green()),
+            '▼' => format!("   {}   ", "▼".red()),
+            _ => "   -   ".to_string(),
+        };
+        table += &format!("{}|", trend_str);
+    }
+    table += "\n";
+
+    table += "|------------|-------|-------|-------|-------|-------|-------|-------|-------|-------|-------|\n";
+    table
+}
+
 impl Miner {
 	pub async fn mine(&self, args: MineArgs) {
 		const MIN_SOL_BALANCE: f64 = 0.005;
+
+		let mut base_rate_history: VecDeque<BaseRateInfo> = VecDeque::with_capacity(10);
 
 		// Register, if needed.
         let signer = self.signer();
@@ -314,12 +393,21 @@ impl Miner {
 					format!("{:>17.2}", (session_ore_mined * _current_ore_price) - (session_sol_used * _current_sol_price) - cloud_usage_cost).bright_green(),
 				).as_str();
 
-				log_stats+=format!("| Total Hashes in session: {:.1}M\t\tAverage Hashes per pass: {:.0}\t\tThreads: {}\n",
-					(session_hashes as f64) / 1048576.0,		// Calc Mega Hashes
+				// Calculate average hashes per second
+				let total_mining_time = mining_start_time.elapsed().as_secs() as f64;
+				let hash_benchmark_hps = if total_mining_time > 0.0 {
+					session_hashes as f64 / total_mining_time
+				} else {
+					0.0
+				};
+
+				log_stats += &format!(
+					"| Total Hashes in session: {:.1}M\t\tAverage Hashes per pass: {:.0}\t\tThreads: {}\t{}\n",
+					(session_hashes as f64) / 1048576.0,  // Calc Mega Hashes
 					session_hashes as f64 / (pass-1) as f64,
 					args.threads,
-				).as_str();
-
+					format!("[{:>6.2} H/s]", hash_benchmark_hps).dimmed()
+				);
 				log_stats+=format!("|\n| Difficulties solved during {} passes:\n", pass-1).as_str();
 
 				let mut max_count: u32 = 0;
@@ -386,6 +474,18 @@ impl Miner {
 						log_stats+=format!("|{:>3}{}", display_val, "%".dimmed()).as_str();
 					}
 				}
+
+
+				if pass < 10 {
+					log_stats += format!("\n\n| Base Rate Change in Grains for pass {}:\n", pass-1).as_str();
+				} else {
+					log_stats += "\n\n| Base Rate Change in Grains for last 10 passes:\n";
+				}
+
+				if !base_rate_history.is_empty() {
+					log_stats += &format_base_rate_change_table(&base_rate_history);
+				}
+
 				log_stats+=format!("|\n").as_str();
 				log_stats+=format!("{}\n", green_separator_line).as_str();
 
@@ -427,6 +527,8 @@ impl Miner {
 
 			// Fetch the current config at the start of each loop
 			let config = get_config(&self.rpc_client).await;
+			let base_rate = amount_u64_to_f64(config.base_reward_rate);
+            update_base_rate_history(&mut base_rate_history, base_rate);
 
 			// New pass - log staked & balance details
             log_start_pass+=format!("        Currently Staked: {:>17.11} ORE   Wallet: {:>11.6} SOL    Base Reward Rate: {:.11} ORE\n",
