@@ -425,10 +425,14 @@ impl Miner {
 				load_avg_15min,
 			).as_str();
 
+			// Fetch the current config at the start of each loop
+			let config = get_config(&self.rpc_client).await;
+
 			// New pass - log staked & balance details
-            log_start_pass+=format!("        Currently Staked: {:>17.11} ORE   Wallet: {:>11.6} SOL    \n",
+            log_start_pass+=format!("        Currently Staked: {:>17.11} ORE   Wallet: {:>11.6} SOL    Base Reward Rate: {:.11} ORE\n",
 				current_staked_balance,
 				current_sol_balance,
+				amount_u64_to_f64(config.base_reward_rate),
             ).as_str();
 			print!("{}", log_start_pass);
 

@@ -143,20 +143,23 @@ The miner will keep track of your ORE mined, SOL spent and hashes calculated for
 
 At regular intervals, you will get a summary page detailing the progress of your mining session.
 ```sh
-========================================================================================================================
-| Current ORE Price: $333.37    Current SOL Price: $186.53
-| Max session reward: 0.03639313835 ORE ($12.1324) at difficulty 19 during pass 4.
-| Average reward:     0.01364779576 ORE ($4.5498) over 5 passes.
-| Session Summary:    Profit (ORE)              Cost (SOL)      Cost (Electric)
-|          Tokens:    $0.06823897878 ORE        $0.0000 SOL     0.008kW for 100W rig
-|      In dollars:    $22.7488 ORE              $0.0047 SOL     $0.0033 @ $0.40 per kW/Hr
-|   Profitablility: $22.74
-| Total Hashes in session: 338815               Average Hashes per pass: 67763
+=======================================================================================================================================
+|       Current ORE Price:            499.17 USD                Current SOL Price: $172.25 USD
+|      Max session reward:     0.33260961607 ORE  ($166.03) at difficulty 18 during pass 2      [~33.2610% of supply]
+|          Average reward:     0.09181490399 ORE  ($45.8312) over 5 passes                      [~9.1815% of supply]
+|         Session Summary:            Profit                      Cost        Cost (Cloud)
+|                  Tokens:     0.45907451993 ORE              0.000038 SOL    0.083 hours @ $0.16/hour
+|              In dollars:            229.16 USD                  0.01 USD    0.01 USD
+|          Profitablility:            229.14 USD
+| Total Hashes in session: 0.2M         Average Hashes per pass: 45980          Threads: 8
+|
 | Difficulties solved during 5 passes:
-|----|----|----|
-|  15|  16|  19|
-|   3|   1|   1|
-========================================================================================================================
+|------------|----|----|----|----|
+| Difficulty |  13|  15|  16|  18|
+| Solves     |   1|   1|   2|   1|
+| Percentage | 20%| 20%| 40%| 20%|
+| Cumulative | 20%| 40%| 80%|100%|
+=======================================================================================================================================
 ```
 You are shown the current ORE and SOL prices in dollars if you have setup the coingecko api key in your config. See https://www.coingecko.com/en/api and look for the demo account option which is free.
 
@@ -232,36 +235,32 @@ The name of the file will be the same name as your miner along with a number and
 
 There is a helper script called ```./watchStats.sh``` which accept the miner number as a parameter e.g. ```./watchStats.sh 1```. Open up a new terminal and start this script. When miner 1 is running, it will update every minute to show the stats for the miner. This can give you a single screen, non scrolling version of your miners logs. An example is below. 
 ```sh
-Every 5.0s: echo Displaying log ./logs/Miner_1--1--2024-05-25-155248.log; cat ./logs/Miner_1--1--...  zephyrus: Sat May 25 23:22:48 2024
+Displaying log ./logs/Miner_1--1--2024-07-25-234208.log
+=======================================================================================================================================
+| Stats for Miner 1 pass 7 at 23:49:08 on 2024-07-25    [id]    Started at 23:42:09 on 2024-07-25
+=======================================================================================================================================
+|       Current ORE Price:            503.20 USD                Current SOL Price: $172.13 USD
+|      Max session reward:     0.33260961607 ORE  ($166.03) at difficulty 18 during pass 2      [~33.2610% of supply]
+|          Average reward:     0.07516858771 ORE  ($37.8248) over 7 passes                      [~7.5169% of supply]
+|         Session Summary:            Profit                      Cost        Cost (Cloud)
+|                  Tokens:     0.52618011395 ORE              0.000052 SOL    0.117 hours @ $0.16/hour
+|              In dollars:            264.77 USD                  0.01 USD    0.02 USD
+|          Profitablility:            264.75 USD
+| Total Hashes in session: 0.3M         Average Hashes per pass: 46609          Threads: 8
+|
+| Difficulties solved during 7 passes:
+|------------|----|----|----|----|----|
+| Difficulty |  13|  15|  16|  17|  18|
+| Solves     |   1|   1|   3|   1|   1|
+| Percentage | 14%| 14%| 42%| 14%| 14%|
+| Cumulative | 14%| 28%| 71%| 85%|100%|
+=======================================================================================================================================
+Pass 7 started at 23:48:07 on 2024-07-25                Mined for 5m 58s        CPU: 53.12/34.14/20.87
+        Currently Staked:   418.98465585357 ORE   Wallet:    4.965540 SOL    
+  [60s] Difficulty: 16 after 53 secs   Hashes: 47480   Hash: 11ZLR1N6Rk7zA4sksCvBrgwLaFdjuzocPaugDJa8HSM
+  [61s] Completed  Mined:     0.03355288261 ORE     Cost:   -0.000007 SOL    Session:     0.52618011395 ORE       0.000052 SOL
 
-Displaying log ./logs/Miner_1--1--2024-05-25-155248.log
-=======================================================================================================================================
-| Stats for Miner 1 pass 2 at 23:22:06 on 2024-05-25    [wallet_devnet_test1]   Started at 23:20:47 on 2024-05-25
-=======================================================================================================================================
-|       Current ORE Price:            293.81 USD                Current SOL Price: $167.24 USD
-|      Max session reward:     0.36912075702 ORE  ($108.45) at difficulty 20 during pass 2      [~36.9121% of supply]
-|          Average reward:     0.18456037851 ORE  ($54.2257) over 2 passes                      [~18.4560% of supply]
-|         Session Summary:            Profit                      Cost        Cost (Electric)
-|                  Tokens:     0.36912075702 ORE              0.000010 SOL    0.003kW for 85W rig
-|              In dollars:            108.45 USD                  0.00 USD    0.00 @ $0.40 per kW/Hr
-|          Profitablility:            108.45 USD
-| Total Hashes in session: 0.1M         Average Hashes per pass: 50360          Threads: 15
-| 
-| Difficulties solved during 2 passes:
-|------------|----|----|
-| Difficulty |  13|  20|
-| Solves     |   1|   1|
-| Percentage | 50%| 50%|
-| Cumulative | 50%|100%|
-=======================================================================================================================================
-Pass 2 started at 23:21:06 on 2024-05-25                Mined for 19s   CPU: 59°C   0.88/0.28/0.35
-        Currently Staked:   240.65112308950 ORE   Wallet:    5.479434 SOL    Last Withdrawal: 111.1 hours ago No Withdrawal Penalty
-  [57s] Difficulty: 20* after 9 secs   Hashes: 89110   Hash: 112cSq2Ep66SvAtRcNKFDUhA2mZZtjSF9W1tqmRnMFz
-  [60s] Completed  Mined:     0.36912075702 ORE     Cost:   -0.000005 SOL    Session:     0.36912075702 ORE       0.000010 SOL
-=======================================================================================================================================
-| You just mined your highest reward for this session!!
-|      Max session reward:     0.36912075702 ORE  ($108.45) at difficulty 20 during pass 2      [~36.9121% of supply]
-=======================================================================================================================================
+
 ```
 
 You can also view the results of previous mining sessions by adding an extra parameter: ```./watchStats.sh 1 2``` will you you the final stats of the previous mining session allowing you to compare results. You can take the second parameter up to 6 ie 5 previous mining sessions.

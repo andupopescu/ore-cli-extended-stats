@@ -12,3 +12,4 @@ node_modules
 dashboard/build
 dashboard/public/dashboarddata
 priorityFee.txt
+update_priority_fee.sh
