@@ -165,28 +165,23 @@ impl Miner {
 		let log_tx=String::from("");
 		log_startup+=format!("{}\n", green_separator_line).as_str();
 		
-		println!("Debug: Attempting to read CLOUD_COST_PER_HOUR");
+
 		let _rig_cost_per_hour: f64 = match env::var("CLOUD_COST_PER_HOUR") {
 			Ok(value) => {
-				println!("Debug: CLOUD_COST_PER_HOUR read as '{}'", value);
 				match value.parse::<f64>() {
 					Ok(parsed) => {
-						println!("Debug: Successfully parsed CLOUD_COST_PER_HOUR as {}", parsed);
 						parsed
 					},
-					Err(e) => {
-						println!("Debug: Failed to parse CLOUD_COST_PER_HOUR '{}': {}", value, e);
+					Err(_e) => {
 						0.0 // Default value
 					}
 				}
 			},
-			Err(e) => {
-				println!("Debug: Failed to read CLOUD_COST_PER_HOUR: {}", e);
+			Err(_e) => {
 				0.0 // Default value
 			}
 		};
 
-		println!("Debug: Final rig_cost_per_hour value: {}", rig_cost_per_hour);
 		log_startup+=format!("| Cloud cost per hour: ${:.2}\n", rig_cost_per_hour).as_str();
 		
 		log_startup+=format!("| Wallet name: {}\n", wallet_name.bold()).as_str();
