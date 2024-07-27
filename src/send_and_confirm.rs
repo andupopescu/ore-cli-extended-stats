@@ -243,15 +243,14 @@ impl Miner {
 	fn lookup_ore_error_description(&self, err: TransactionError) -> String {
 		let error_message=err.to_string();
 		let mut additional_text="";
-		if error_message.contains("0x0") { additional_text=": Mining is paused"; }
-		if error_message.contains("0x1") { additional_text=": The epoch has ended and needs reset"; }
-		if error_message.contains("0x2") { additional_text=": The provided hash is invalid"; }
-		if error_message.contains("0x3") { additional_text=": The provided hash did not satisfy the minimum required difficulty"; }
-		if error_message.contains("0x4") { additional_text=": The claim amount cannot be greater than the claimable rewards"; }
-		if error_message.contains("0x5") { additional_text=": The clock time is invalid"; }
-		if error_message.contains("0x6") { additional_text=": Only one hash may be validated per transaction"; }
-		if error_message.contains("0x7") { additional_text=": The tolerance cannot exceed i64 max value"; }
-		if error_message.contains("0x8") { additional_text=": The tolerance cannot exceed i64 max value"; }
+		if error_message.contains("0x0") { additional_text=": The epoch has ended and needs reset"; }
+		if error_message.contains("0x1") { additional_text=": The provided hash is invalid"; }
+		if error_message.contains("0x2") { additional_text=": The provided hash did not satisfy the minimum required difficulty"; }
+		if error_message.contains("0x3") { additional_text=": The claim amount cannot be greater than the claimable rewards"; }
+		if error_message.contains("0x4") { additional_text=": The clock time is invalid"; }
+		if error_message.contains("0x5") { additional_text=": You are trying to submit too soon"; }
+		if error_message.contains("0x6") { additional_text=": The maximum supply has been reached"; }
+		if error_message.contains("0x7") { additional_text=": Only one hash may be validated per transaction"; }
 
 		if additional_text=="" {
 			// return original error message as a string
