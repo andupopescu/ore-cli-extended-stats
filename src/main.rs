@@ -9,6 +9,7 @@ mod cu_limits;
 #[cfg(feature = "admin")]
 mod initialize;
 mod mine;
+mod miners;
 mod open;
 mod rewards;
 mod send_and_confirm;
@@ -54,6 +55,9 @@ enum Commands {
 
     #[command(about = "Start mining")]
     Mine(MineArgs),
+
+	#[command(about = "Show the miners' transactions")]
+    Miners(MineArgs),
 
     #[command(about = "Fetch the current reward rate for each difficulty level")]
     Rewards(RewardsArgs),
@@ -157,6 +161,9 @@ async fn main() {
         }
         Commands::Config(_) => {
             miner.config().await;
+        }
+        Commands::Miners(_) => {
+            miner.miners().await;
         }
         Commands::Mine(args) => {
             miner.mine(args).await;
