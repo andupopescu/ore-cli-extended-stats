@@ -23,7 +23,7 @@ BUFFER_TIME1=1
 # The difficulty level you would expect this miner to achieve
 DESIRED_DIFFICULTY_LEVEL1=17
 # The cost per hour to run this miner in the cloud
-CLOUD_COST_PER_HOUR1=0.20
+CLOUD_COST_PER_HOUR1=0.25
 
 # Miner 2 config
 #======================================================================================================
@@ -33,7 +33,7 @@ PRIORITY_FEE2=40
 THREADS2=2
 BUFFER_TIME2=2
 DESIRED_DIFFICULTY_LEVEL2=13
-CLOUD_COST_PER_HOUR2=0.20
+CLOUD_COST_PER_HOUR2=0.25
 
 # Miner 3 config
 #======================================================================================================
@@ -46,4 +46,4 @@ MINER_WATTAGE_IDLE3=15
 MINER_WATTAGE_BUSY3=80
 BUFFER_TIME3=2
 DESIRED_DIFFICULTY_LEVEL3=13
-CLOUD_COST_PER_HOUR3=0.20
+CLOUD_COST_PER_HOUR3=0.25
