@@ -595,6 +595,7 @@ impl Miner {
 					tokio::spawn(async move {
 						Self::send_log_to_webhook(webhook_url, json_log_clone).await;
 					});
+					println!("Log sent to webhook: {}", log_webhook);
 				}
 
 				// Display stats on screen every X passes
