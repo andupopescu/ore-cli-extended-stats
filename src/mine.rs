@@ -142,6 +142,7 @@ impl Miner {
 		let mut difficulties_solved: BTreeMap<u32, usize> = BTreeMap::new();	// An array that counts how many of each difficulty has been solved in this session
 		let mut max_reward: f64 = 0.0;						// What has been the highest reward mined in this session
 		let mut max_reward_text: String = "".to_string();	// A text string detailing the maximum reward pass
+		let mut passes_without_rewards: u32 = 0; 			// Counts how many passes have been without rewards
 
 		let mut _current_ore_price:f64;
 		let mut _current_sol_price:f64;
@@ -274,6 +275,7 @@ impl Miner {
 				let mut last_pass_ore_mined=current_staked_balance-last_staked_balance;
 				// If ore has been unstaked, then this value will be wrong for last pass so ignore it
 				if last_pass_ore_mined<0.0 {
+					passes_without_rewards += 1;
 					last_pass_ore_mined=0.0;
 				}
 				// Not sure how to detect is additional ore has been staked
@@ -510,8 +512,9 @@ impl Miner {
 			log_end_pass=String::from("");
 			log_mined=String::from("");
 			log_start_pass=String::from("");
-			log_start_pass+=format!("Pass {} started at {}\t\tMined for {}\tCPU: {}{:.2}/{:.2}/{:.2}\n",
+			log_start_pass+=format!("Pass {}[{}] started at {}\t\tMined for {}\tCPU: {}{:.2}/{:.2}/{:.2}\n",
 				pass,
+				passes_without_rewards,
 				Local::now().format("%H:%M:%S on %Y-%m-%d").to_string(),
 				format_duration(Duration::from_secs(mining_start_time.elapsed().as_secs())),
 				cpu_temp_txt,
@@ -532,6 +535,7 @@ impl Miner {
 				amount_u64_to_f64(config.base_reward_rate),
             ).as_str();
 			print!("{}", log_start_pass);
+
 
 			// Pause mining for one minute if no SOL available for transaction fee
 			// This keeps the miner looping and will restart mining when enough SOL is added to miner's wallet
