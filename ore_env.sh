@@ -18,6 +18,7 @@ WATTAGEBUSYNO=MINER_WATTAGE_BUSY$1
 BUFFER_TIMENO=BUFFER_TIME$1
 DESIRED_DIFFICULTY_LEVELNO=DESIRED_DIFFICULTY_LEVEL$1
 CLOUD_COST_PER_HOURNO=CLOUD_COST_PER_HOUR$1
+LOG_WEBHOOKNO=LOG_WEBHOOK$1
 
 RPC_URL=${!RPCNO}
 KEY=${!KEYNO}
@@ -25,13 +26,11 @@ THREADS=${!THREADSNO}
 FEE=${!FEENO}
 BUFFER_TIME=${!BUFFER_TIMENO}
 
-
 MINER_NAME="Miner ${1}"
 CLOUD_COST_PER_HOUR=${!CLOUD_COST_PER_HOURNO}
 MINER_DESIRED_DIFFICULTY_LEVEL=${!DESIRED_DIFFICULTY_LEVELNO}
 export CLOUD_COST_PER_HOUR=${!CLOUD_COST_PER_HOURNO}
-
-
+export LOG_WEBHOOK=${!LOG_WEBHOOKNO}
 
 # echo RPC_URL:							${RPC_URL}
 # echo KEY: 							${KEY}
@@ -74,7 +73,6 @@ if [ ! -f ${ORE_BIN} ]; then
 	exit 2
 fi
 
-
 rotateLogFile() {
 	origIndex=$1
 	newIndex=$2
@@ -90,8 +88,20 @@ rotateLogFile() {
 				fi
 			fi
 		done
+		# Rotate JSON logs
+		for oldlog in $(ls ${STATS_LOGFILE_BASE}--${origIndex}--*.json); do
+			if [ -f "${oldlog}" ]; then
+				newlog="${oldlog/--${origIndex}--/--${newIndex}--}"
+				echo "Rotating old JSON log file: ${oldlog} -> ${newlog}"
+				mv ${oldlog} ${newlog}
+				if [ ${origIndex} -eq 1 ]; then
+					echo -e "*** This is an archived JSON log file ***\n\n$(cat ${newlog})" > ${newlog}
+				fi
+			fi
+		done
 	fi
 }
+
 removeLogFile() {
 	origIndex=$1
 	ls ${STATS_LOGFILE_BASE}--${origIndex}--*.log >/dev/null 2>&1
@@ -99,6 +109,13 @@ removeLogFile() {
 		for oldlog in $(ls ${STATS_LOGFILE_BASE}--${origIndex}--*.log); do
 			if [ -f "${oldlog}" ]; then
 				echo "Removing old log file: ${oldlog}"
+				rm "${oldlog}"
+			fi
+		done
+		# Remove JSON logs
+		for oldlog in $(ls ${STATS_LOGFILE_BASE}--${origIndex}--*.json); do
+			if [ -f "${oldlog}" ]; then
+				echo "Removing old JSON log file: ${oldlog}"
 				rm "${oldlog}"
 			fi
 		done

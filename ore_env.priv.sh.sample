@@ -24,6 +24,8 @@ BUFFER_TIME1=1
 DESIRED_DIFFICULTY_LEVEL1=17
 # The cost per hour to run this miner in the cloud
 CLOUD_COST_PER_HOUR1=0.25
+#Log webhook
+LOG_WEBHOOK1=https://webhookforlog.injest.com
 
 # Miner 2 config
 #======================================================================================================
@@ -34,6 +36,7 @@ THREADS2=2
 BUFFER_TIME2=2
 DESIRED_DIFFICULTY_LEVEL2=13
 CLOUD_COST_PER_HOUR2=0.25
+LOG_WEBHOOK2=https://webhookforlog.injest.com
 
 # Miner 3 config
 #======================================================================================================
@@ -47,3 +50,4 @@ MINER_WATTAGE_BUSY3=80
 BUFFER_TIME3=2
 DESIRED_DIFFICULTY_LEVEL3=13
 CLOUD_COST_PER_HOUR3=0.25
+LOG_WEBHOOK3=https://webhookforlog.injest.com

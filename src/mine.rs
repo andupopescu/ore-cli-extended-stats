@@ -10,7 +10,9 @@ use systemstat::{System, Platform};
 use chrono::prelude::*;
 use std::collections::VecDeque;
 use serde::Serialize;
+use reqwest;
 use serde_json::to_string_pretty;
+use hostname;
 
 use colored::*;
 use drillx::{
@@ -70,6 +72,8 @@ const GRAINS_PER_ORE: u64 = 100_000_000_000; // 100 billion grains per ORE
 
 #[derive(Serialize)]
 struct LogInfo {
+	computer_name: String,
+	miner_name: String,
     pass: u32,
     passes_without_rewards: u32,
     start_time: String,
@@ -143,6 +147,25 @@ fn format_base_rate_change_table(history: &VecDeque<BaseRateInfo>) -> String {
 
 
 impl Miner {
+    async fn send_log_to_webhook(webhook_url: String, json_log: String) {
+        let client = reqwest::Client::new();
+        let res = client.post(&webhook_url)
+            .header("Content-Type", "application/json")
+            .body(json_log)
+            .send()
+            .await;
+
+        match res {
+            Ok(response) => {
+                if !response.status().is_success() {
+                    eprintln!("Failed to send log to webhook: {}", response.status());
+                }
+            }
+            Err(err) => {
+                eprintln!("Error sending log to webhook: {}", err);
+            }
+        }
+    }
 	pub async fn mine(&self, args: MineArgs) {
 		const MIN_SOL_BALANCE: f64 = 0.005;
 
@@ -180,6 +203,7 @@ impl Miner {
 		let miner_name=env::var("MINER_NAME").unwrap_or("Unnamed Miner".to_string());
 		let wallet_name=env::var("WALLET_NAME").unwrap_or("Unnamed Wallet".to_string());
 		let rig_cost_per_hour: f64 = env::var("CLOUD_COST_PER_HOUR").ok().and_then(|x| x.parse::<f64>().ok()).unwrap_or(1.0);
+		let log_webhook=env::var("LOG_WEBHOOK").unwrap_or("".to_string());
 		let rig_desired_difficulty_level: u32 = env::var("MINER_DESIRED_DIFFICULTY_LEVEL").ok().and_then(|x| x.parse::<u32>().ok()).unwrap_or(13);
 		let stats_logfile=env::var("STATS_LOGFILE").unwrap_or("".to_string());
 	
@@ -524,9 +548,16 @@ impl Miner {
 					let _result = write(stats_logfile.clone(), what_to_log);
 				}
 
+				let miner_name=env::var("MINER_NAME").unwrap_or("".to_string());
+				// Get the computer name
+				let computer_name = hostname::get()
+					.map(|s| s.to_string_lossy().into_owned())
+					.unwrap_or_else(|_| "Unknown".to_string());
 
                 // Create log info struct
                 let log_info = LogInfo {
+					miner_name: miner_name.clone(),
+					computer_name: computer_name.clone(),
                     pass: pass - 1,
                     passes_without_rewards,
                     start_time: Local::now().to_string(),
@@ -548,15 +579,23 @@ impl Miner {
                     base_rate_history: base_rate_history.clone(),
 				};	
 
-                // Serialize log info to JSON
-                let json_log = to_string_pretty(&log_info).unwrap();
+				// Serialize log info to JSON
+				let json_log = to_string_pretty(&log_info).unwrap();
 
-                // Save JSON log to file
-                if stats_logfile != "" {
-                    let json_logfile = format!("{}.json", stats_logfile);
-                    let _result = write(json_logfile, json_log);
-                }
+				// Save JSON log to file
+				if stats_logfile != "" {
+					let json_logfile = format!("{}.json", stats_logfile);
+					let _result = write(json_logfile, json_log.clone());
+				}
 
+				// Send JSON log to webhook if LOG_WEBHOOK is set
+				if !log_webhook.is_empty() {
+					let webhook_url = log_webhook.clone();
+					let json_log_clone = json_log.clone();
+					tokio::spawn(async move {
+						Self::send_log_to_webhook(webhook_url, json_log_clone).await;
+					});
+				}
 
 				// Display stats on screen every X passes
 				if (pass-1) % 5 == 0 {
