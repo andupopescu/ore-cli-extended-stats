@@ -147,23 +147,22 @@ fn format_base_rate_change_table(history: &VecDeque<BaseRateInfo>) -> String {
 
 
 impl Miner {
-    async fn send_log_to_webhook(webhook_url: String, json_log: String) {
+    async fn send_log_to_webhook(webhook_url: String, json_log: String) -> std::result::Result<(), String> {
         let client = reqwest::Client::new();
-        let res = client.post(&webhook_url)
+        match client.post(&webhook_url)
             .header("Content-Type", "application/json")
             .body(json_log)
             .send()
-            .await;
-
-        match res {
+            .await
+        {
             Ok(response) => {
-                if !response.status().is_success() {
-                    eprintln!("Failed to send log to webhook: {}", response.status());
+                if response.status().is_success() {
+                    Ok(())
+                } else {
+                    Err(format!("Failed to send log to webhook. Status: {}", response.status()))
                 }
             }
-            Err(err) => {
-                eprintln!("Error sending log to webhook: {}", err);
-            }
+            Err(err) => Err(format!("Error sending log to webhook: {}", err)),
         }
     }
 	pub async fn mine(&self, args: MineArgs) {
@@ -592,10 +591,10 @@ impl Miner {
 				if !log_webhook.is_empty() {
 					let webhook_url = log_webhook.clone();
 					let json_log_clone = json_log.clone();
-					tokio::spawn(async move {
-						Self::send_log_to_webhook(webhook_url, json_log_clone).await;
-					});
-					println!("Log sent to webhook: {}", log_webhook);
+					match Self::send_log_to_webhook(webhook_url.clone(), json_log_clone).await {
+						Ok(_) => println!("Log successfully sent to webhook: {}", webhook_url),
+						Err(e) => eprintln!("Failed to send log to webhook: {}. Error: {}", webhook_url, e),
+					}
 				}
 
 				// Display stats on screen every X passes
