@@ -9,7 +9,8 @@ use humantime::format_duration;
 use systemstat::{System, Platform};
 use chrono::prelude::*;
 use std::collections::VecDeque;
-
+use serde::Serialize;
+use serde_json::to_string_pretty;
 
 use colored::*;
 use drillx::{
@@ -37,6 +38,7 @@ use crate::{
     Miner,
 };
 
+#[derive(Serialize, Clone)]
 struct BaseRateInfo {
     rate: f64,
     change: f64,
@@ -64,6 +66,31 @@ fn update_base_rate_history(history: &mut VecDeque<BaseRateInfo>, new_rate: f64)
 }
 
 const GRAINS_PER_ORE: u64 = 100_000_000_000; // 100 billion grains per ORE
+
+
+#[derive(Serialize)]
+struct LogInfo {
+    pass: u32,
+    passes_without_rewards: u32,
+    start_time: String,
+    duration: String,
+    cpu_temp: String,
+    load_avg_1min: f32,
+    load_avg_5min: f32,
+    load_avg_15min: f32,
+    current_staked_balance: f64,
+    current_sol_balance: f64,
+    base_reward_rate: f64,
+    last_pass_ore_mined: f64,
+    last_pass_sol_used: f64,
+    session_ore_mined: f64,
+    session_sol_used: f64,
+    max_reward: f64,
+    max_reward_text: String,
+    session_hashes: u64,
+    difficulties_solved: BTreeMap<u32, usize>,
+    base_rate_history: VecDeque<BaseRateInfo>,
+}
 
 fn format_base_rate_change_table(history: &VecDeque<BaseRateInfo>) -> String {
     let mut table = String::new();
@@ -111,6 +138,10 @@ fn format_base_rate_change_table(history: &VecDeque<BaseRateInfo>) -> String {
     table += "|------------|-------|-------|-------|-------|-------|-------|-------|-------|-------|-------|\n";
     table
 }
+
+
+
+
 
 impl Miner {
 	pub async fn mine(&self, args: MineArgs) {
@@ -271,6 +302,8 @@ impl Miner {
 
 			// Summarize the results of the previous mining pass
 			if pass>1 {
+				// Fetch the current config at the start of each loop
+				let config = get_config(&self.rpc_client).await;
 				// Add the difference in staked ore from the previous pass to the session_ore_mined tally
 				let mut last_pass_ore_mined=current_staked_balance-last_staked_balance;
 				// If ore has been unstaked, then this value will be wrong for last pass so ignore it
@@ -491,6 +524,41 @@ impl Miner {
 					let what_to_log=format!("{}{}{}{}{}", log_stats, log_start_pass, log_hash, log_tx, log_end_pass);
 					let _result = write(stats_logfile.clone(), what_to_log);
 				}
+
+
+                // Create log info struct
+                let log_info = LogInfo {
+                    pass: pass - 1,
+                    passes_without_rewards,
+                    start_time: Local::now().to_string(),
+                    duration: format_duration(Duration::from_secs(mining_start_time.elapsed().as_secs())).to_string(),
+                    cpu_temp: cpu_temp_txt.clone(),
+                    load_avg_1min,
+                    load_avg_5min,
+                    load_avg_15min,
+                    current_staked_balance,
+                    current_sol_balance,
+                    base_reward_rate: amount_u64_to_f64(config.base_reward_rate),
+                    last_pass_ore_mined,
+                    last_pass_sol_used,
+                    session_ore_mined,
+                    session_sol_used,
+                    max_reward,
+                    max_reward_text: max_reward_text.clone(),
+                    session_hashes,
+                    difficulties_solved: difficulties_solved.clone(),
+                    base_rate_history: base_rate_history.clone(),
+				};	
+
+                // Serialize log info to JSON
+                let json_log = to_string_pretty(&log_info).unwrap();
+
+                // Save JSON log to file
+                if stats_logfile != "" {
+                    let json_logfile = format!("{}.json", stats_logfile);
+                    let _result = write(json_logfile, json_log);
+                }
+
 
 				// Display stats on screen every X passes
 				if (pass-1) % 5 == 0 {

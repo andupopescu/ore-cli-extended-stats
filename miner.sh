@@ -10,6 +10,25 @@ source ./ore_env.sh $1
 
 solana config set --url ${RPC1} >/dev/null
 
+rotate_logs() {
+	local log_file_base=$1
+	for i in {5..1}; do
+		if [ -f "${log_file_base}--${i}.log" ]; then
+			mv "${log_file_base}--${i}.log" "${log_file_base}--$((i+1)).log"
+		fi
+		if [ -f "${log_file_base}--${i}.json" ]; then
+			mv "${log_file_base}--${i}.json" "${log_file_base}--$((i+1)).json"
+		fi
+	done
+}
+
+remove_log_file() {
+	local log_file_base=$1
+	local index=$2
+	rm -f "${log_file_base}--${index}.log"
+	rm -f "${log_file_base}--${index}.json"
+}
+
 while true; do
 	echo ------------------------------------------------------------------------------------------------------------------------
 	echo Initialising:		${MINER_NAME}
@@ -26,16 +45,13 @@ while true; do
 		mkdir "./logs"
 	fi
 	STATS_LOGFILE_BASE="./logs/${MINER_NAME// /_}"
-	removeLogFile 6
-	rotateLogFile 5 6
-	rotateLogFile 4 5
-	rotateLogFile 3 4
-	rotateLogFile 2 3
-	rotateLogFile 1 2
-	removeLogFile 1
+	remove_log_file "${STATS_LOGFILE_BASE}" 6
+	rotate_logs "${STATS_LOGFILE_BASE}"
+	remove_log_file "${STATS_LOGFILE_BASE}" 1
 	STATS_LOGFILE="${STATS_LOGFILE_BASE}--1--$(date '+%Y-%m-%d-%H%M%S').log"
-	# echo $LOGFILE
+	STATS_JSONFILE="${STATS_LOGFILE_BASE}--1--$(date '+%Y-%m-%d-%H%M%S').json"
 	export STATS_LOGFILE
+	export STATS_JSONFILE
 
 	export MINER_NAME
 	WALLET_NAME=${KEY##*/}
