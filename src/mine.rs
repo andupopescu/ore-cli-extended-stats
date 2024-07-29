@@ -20,10 +20,10 @@ use drillx::{
     Hash, Solution
 };
 use ore_api::{
-    consts::{BUS_ADDRESSES, BUS_COUNT, EPOCH_DURATION},
+    consts::{EPOCH_DURATION},
     state::{Config, Proof},
 };
-use rand::Rng;
+
 use solana_program::{
 	pubkey::Pubkey,
     native_token::{lamports_to_sol, sol_to_lamports},
@@ -36,9 +36,10 @@ use solana_sdk::clock::Clock;
 use crate::{
     args::MineArgs,
     send_and_confirm::ComputeBudget,
-    utils::{amount_u64_to_f64, get_clock, get_config, get_proof_with_authority},
+    utils::{ amount_u64_to_f64, get_clock, get_config, get_proof_with_authority, proof_pubkey},
     Miner,
 };
+
 
 #[derive(Serialize, Clone)]
 struct BaseRateInfo {
@@ -676,7 +677,7 @@ impl Miner {
 				// Submit most difficult hash
 				let config = get_config(&self.rpc_client).await;
 				let mut compute_budget = 500_000;
-				let mut ixs = vec![];
+				let mut ixs = vec![ore_api::instruction::auth(proof_pubkey(signer.pubkey()))];
 				if self.should_reset(config).await {
 					compute_budget += 100_000;
 					ixs.push(ore_api::instruction::reset(signer.pubkey()));
@@ -684,7 +685,7 @@ impl Miner {
 				ixs.push(ore_api::instruction::mine(
                 signer.pubkey(),
 					signer.pubkey(),
-					find_bus(),
+					self.find_bus().await,
 					solution,
 				));
 				// std::thread::sleep(Duration::from_millis(60000)); // debug submitting transactions too late
@@ -1038,10 +1039,10 @@ impl Miner {
     	}
 	}
 
+    async fn find_bus(&self) -> Pubkey {
+        let address = self.get_best_bus().await;
+        address
+    }
 }
 
-// TODO Pick a better strategy (avoid draining bus)
-fn find_bus() -> Pubkey {
-    let i = rand::thread_rng().gen_range(0..BUS_COUNT);
-    BUS_ADDRESSES[i]
-}
+
