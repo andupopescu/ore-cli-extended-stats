@@ -36,7 +36,7 @@ use solana_sdk::clock::Clock;
 use crate::{
     args::MineArgs,
     send_and_confirm::ComputeBudget,
-	utils::{ amount_u64_to_f64, get_clock, get_config, get_proof_with_authority, proof_pubkey},
+    utils::{amount_u64_to_f64, get_clock, get_config, get_proof_with_authority},
     Miner,
 };
 
@@ -676,7 +676,7 @@ impl Miner {
 				// Submit most difficult hash
 				let config = get_config(&self.rpc_client).await;
 				let mut compute_budget = 500_000;
-				let mut ixs = vec![ore_api::instruction::auth(proof_pubkey(signer.pubkey()))];
+				let mut ixs = vec![];
 				if self.should_reset(config).await {
 					compute_budget += 100_000;
 					ixs.push(ore_api::instruction::reset(signer.pubkey()));
