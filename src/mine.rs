@@ -561,7 +561,7 @@ impl Miner {
                     passes_without_rewards,
                     start_time: Local::now().to_string(),
                     duration: format_duration(Duration::from_secs(mining_start_time.elapsed().as_secs())).to_string(),
-                    cpu_temp: cpu_temp_txt.clone(),
+                    cpu_temp: cpu_temp.to_string(),
                     load_avg_1min,
                     load_avg_5min,
                     load_avg_15min,
