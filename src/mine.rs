@@ -705,7 +705,6 @@ impl Miner {
                     config.base_reward_rate,
                     config.min_difficulty
                 );
-                log_start_pass += format!("| Current optimal difficulty: {}\n", rig_desired_difficulty_level).as_str();
             }
 
 			// The proof of work processing for this individual mining pass
@@ -748,7 +747,7 @@ impl Miner {
 				session_hashes+=num_hashes;
 			}
 
-            log_end_pass += format!("Set difficulty level: {}\n", rig_desired_difficulty_level).as_str();
+            log_start_pass += &format!("  Current optimal difficulty: {}\n", rig_desired_difficulty_level).to_string().dimmed().to_string();
 
 			// Log how long this pass took to complete
 			log_end_pass+=format!("  [{}{}] Completed",
