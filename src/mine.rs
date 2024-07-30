@@ -146,7 +146,6 @@ fn format_base_rate_change_table(history: &VecDeque<BaseRateInfo>) -> String {
 
 
 
-
 impl Miner {
     async fn send_log_to_webhook(webhook_url: String, json_log: String) -> std::result::Result<(), String> {
         let client = reqwest::Client::new();
@@ -166,6 +165,20 @@ impl Miner {
             Err(err) => Err(format!("Error sending log to webhook: {}", err)),
         }
     }
+
+    fn calculate_optimal_difficulty(base_reward_rate: u64, base_difficulty: u64) -> u32 {
+        let mut diff_to_target = 0;
+        for i in 1..32 as u64 {
+            let reward_rate = base_reward_rate.saturating_mul(2u64.saturating_pow(i as u32));
+            if amount_u64_to_f64(reward_rate) > 1.0 && diff_to_target == 0 {
+                diff_to_target = base_difficulty.saturating_add(i) as u32;
+                break;
+            }
+        }
+        diff_to_target
+    }
+	
+
 	pub async fn mine(&self, args: MineArgs) {
 		const MIN_SOL_BALANCE: f64 = 0.005;
 
@@ -204,7 +217,25 @@ impl Miner {
 		let wallet_name=env::var("WALLET_NAME").unwrap_or("Unnamed Wallet".to_string());
 		let rig_cost_per_hour: f64 = env::var("CLOUD_COST_PER_HOUR").ok().and_then(|x| x.parse::<f64>().ok()).unwrap_or(1.0);
 		let log_webhook=env::var("LOG_WEBHOOK").unwrap_or("".to_string());
-		let rig_desired_difficulty_level: u32 = env::var("MINER_DESIRED_DIFFICULTY_LEVEL").ok().and_then(|x| x.parse::<u32>().ok()).unwrap_or(13);
+		let mut log_startup = String::new();
+        let use_dynamic_difficulty = env::var("MINER_DESIRED_DIFFICULTY_LEVEL")
+            .map(|v| v.to_uppercase() == "DYNAMIC")
+            .unwrap_or(false);
+
+        let mut rig_desired_difficulty_level: u32 = if use_dynamic_difficulty {
+            13 // Default value for dynamic mode
+        } else {
+            env::var("MINER_DESIRED_DIFFICULTY_LEVEL")
+                .ok()
+                .and_then(|v| v.parse::<u32>().ok())
+                .unwrap_or(13) // Default to 13 if parsing fails
+        };
+
+        log_startup += format!("| Using {} difficulty calculation. Initial difficulty: {}\n", 
+            if use_dynamic_difficulty { "dynamic" } else { "static" },
+            rig_desired_difficulty_level
+        ).as_str();
+
 		let stats_logfile=env::var("STATS_LOGFILE").unwrap_or("".to_string());
 	
 		let separator_line = ("=======================================================================================================================================").to_string().dimmed();
@@ -665,6 +696,18 @@ impl Miner {
 				log_end_pass+=log_no_sol.as_str();
 			}
 
+
+
+			// Recalculate the desired difficulty level if using dynamic mode
+            if use_dynamic_difficulty {
+                let config = get_config(&self.rpc_client).await;
+                rig_desired_difficulty_level = Self::calculate_optimal_difficulty(
+                    config.base_reward_rate,
+                    config.min_difficulty
+                );
+                log_start_pass += format!("| Current optimal difficulty: {}\n", rig_desired_difficulty_level).as_str();
+            }
+
 			// The proof of work processing for this individual mining pass
 			if current_sol_balance>=MIN_SOL_BALANCE {
 				log_hash=String::from("");
@@ -704,6 +747,8 @@ impl Miner {
 				// Duplicate the difficulty log line to stats
 				session_hashes+=num_hashes;
 			}
+
+            log_end_pass += format!("Set difficulty level: {}\n", rig_desired_difficulty_level).as_str();
 
 			// Log how long this pass took to complete
 			log_end_pass+=format!("  [{}{}] Completed",
