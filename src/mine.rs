@@ -747,9 +747,14 @@ impl Miner {
 				session_hashes+=num_hashes;
 			}
 
-            log_start_pass += &format!("  Current optimal difficulty: {} [{}]\n", 
+			let optimal_diff_hits = difficulties_solved.iter()
+				.filter(|(&diff, _)| diff >= rig_desired_difficulty_level)
+				.map(|(_, &count)| count)
+				.sum::<usize>();
+
+			log_start_pass += &format!("  Current optimal difficulty: {} [{}]\n", 
 				rig_desired_difficulty_level, 
-				difficulties_solved.get(&rig_desired_difficulty_level).unwrap_or(&0)
+				optimal_diff_hits
 			).to_string().dimmed().to_string();
 
 			// Log how long this pass took to complete
