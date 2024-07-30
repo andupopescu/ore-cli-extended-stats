@@ -747,7 +747,10 @@ impl Miner {
 				session_hashes+=num_hashes;
 			}
 
-            log_start_pass += &format!("  Current optimal difficulty: {}\n", rig_desired_difficulty_level).to_string().dimmed().to_string();
+            log_start_pass += &format!("  Current optimal difficulty: {} [{}]\n", 
+				rig_desired_difficulty_level, 
+				difficulties_solved.get(&rig_desired_difficulty_level).unwrap_or(&0)
+			).to_string().dimmed().to_string();
 
 			// Log how long this pass took to complete
 			log_end_pass+=format!("  [{}{}] Completed",
