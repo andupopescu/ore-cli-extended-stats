@@ -213,6 +213,7 @@ impl Miner {
 		let mut _current_ore_price:f64;
 		let mut _current_sol_price:f64;
 
+		let mut _optimal_diff_hits = 0;
 		let miner_name=env::var("MINER_NAME").unwrap_or("Unnamed Miner".to_string());
 		let wallet_name=env::var("WALLET_NAME").unwrap_or("Unnamed Wallet".to_string());
 		let rig_cost_per_hour: f64 = env::var("CLOUD_COST_PER_HOUR").ok().and_then(|x| x.parse::<f64>().ok()).unwrap_or(1.0);
