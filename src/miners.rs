@@ -18,7 +18,7 @@ use crate::{
 impl Miner {
     pub async fn miners(&self) {
         let client = self.rpc_client.clone();
-        let ore_program_address = Pubkey::from_str("orewfiPagLonm3yZUectXuwSP8wyDhUcb66Gg9GX9q9").unwrap();
+        let ore_program_address = Pubkey::from_str("oreV2ZymfyeXgNgBdqMkumTqqAprVqgBWQfoYkrtKWQ").unwrap();
         println!("Getting signatures from {:?}", ore_program_address);
         let signatures = client
             .get_signatures_for_address(&ore_program_address)
