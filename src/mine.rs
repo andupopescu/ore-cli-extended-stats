@@ -13,6 +13,7 @@ use serde::Serialize;
 use reqwest;
 use serde_json::to_string_pretty;
 use hostname;
+use rand::Rng;
 
 use colored::*;
 use drillx::{
@@ -721,7 +722,7 @@ impl Miner {
 				let config = get_config(&self.rpc_client).await;
 				let mut compute_budget = 500_000;
 				let mut ixs = vec![ore_api::instruction::auth(proof_pubkey(signer.pubkey()))];
-				if self.should_reset(config).await {
+				if self.should_reset(config).await && rand::thread_rng().gen_range(0..100).eq(&0) {
 					compute_budget += 100_000;
 					ixs.push(ore_api::instruction::reset(signer.pubkey()));
 				}
