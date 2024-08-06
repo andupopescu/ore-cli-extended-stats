@@ -129,6 +129,7 @@ async fn find_hash_par(
                     let mut best_nonce = thread_start_nonce;
                     let mut best_difficulty = 0;
                     let mut best_hash = Hash::default();
+                    let mut thread_hashes = 0;
                     for nonce in thread_start_nonce..thread_end_nonce {
                         if stop_flag.load(Ordering::SeqCst) {
                             break;
@@ -147,6 +148,8 @@ async fn find_hash_par(
                             }
                         }
 
+                        thread_hashes += 1;
+
                         if nonce % 100 == 0 {
                             if timer.elapsed().as_secs().ge(&cutoff_time) {
                                 if best_difficulty.ge(&min_difficulty) {
@@ -160,7 +163,7 @@ async fn find_hash_par(
                             }
                         }
                     }
-
+                    total_hashes.fetch_add(thread_hashes, Ordering::Relaxed);
                     (best_nonce, best_difficulty, best_hash)
                 }
             })
@@ -179,6 +182,9 @@ async fn find_hash_par(
             }
         }
     }
+
+    let total_hashes_done = total_hashes.load(Ordering::Relaxed);
+    println!("Total hashes performed: {}", total_hashes_done);
 
     progress_bar.finish_with_message(format!(
         "Best hash: {} (difficulty: {})",
