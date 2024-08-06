@@ -31,8 +31,8 @@ const _SIMULATION_RETRIES: usize = 4;
 
 
 // Failing Transaction time = GATEWAY_RETRIES * GATEWAY_DELAY = 40 * 250ms = 10s
-const GATEWAY_RETRIES: usize = 20;	// How many times to retry a failed transaction - Reducing this value to 1 triggers regular ERROR-D
-const GATEWAY_DELAY: u64 = 250;		// Delay in ms before retrying a failed transaction
+const GATEWAY_RETRIES: usize = 100;	// How many times to retry a failed transaction - Reducing this value to 1 triggers regular ERROR-D
+const GATEWAY_DELAY: u64 = 200;		// Delay in ms before retrying a failed transaction
 
 // Time spent waiting for confirmation of transaction = CONFIRM_RETRIES * CONFIRM_DELAY = 1 * 50 = 50ms
 const CONFIRM_RETRIES: usize = 20;	// try to get transaction confirmation this many times
