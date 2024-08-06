@@ -16,6 +16,7 @@ mod send_and_confirm;
 mod stake;
 mod upgrade;
 mod utils;
+mod service;
 
 use std::sync::Arc;
 
@@ -71,6 +72,9 @@ enum Commands {
     #[cfg(feature = "admin")]
     #[command(about = "Initialize the program")]
     Initialize(InitializeArgs),
+
+    #[command(about = "Start the mining service")]
+    Service,
 }
 
 #[derive(Parser, Debug)]
@@ -180,6 +184,9 @@ async fn main() {
         #[cfg(feature = "admin")]
         Commands::Initialize(_) => {
             miner.initialize().await;
+        }
+        Commands::Service => {
+            service::start_service().await;
         }
     }
 }

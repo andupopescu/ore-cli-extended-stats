@@ -3,6 +3,7 @@
 /stats
 /wallets
 /target
+/testing
 output.log
 ore_env.priv.sh
 ore
