@@ -1097,5 +1097,3 @@ impl Miner {
         address
     }
 }
-
-
