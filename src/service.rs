@@ -1,14 +1,14 @@
-use std::{sync::Arc, time::Instant};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use warp::Filter;
 use serde::{Deserialize, Serialize};
 use drillx::{
     equix::{self},
     Hash,
 };
-use solana_rpc_client::spinner;
 use hex;
 use tokio::sync::Mutex as TokioMutex;
+use solana_rpc_client::spinner;
 
 #[derive(Deserialize)]
 struct MiningRequest {
@@ -76,7 +76,6 @@ async fn handle_mining_request(req: MiningRequest, mining_state: Arc<TokioMutex<
     let mut challenge = [0u8; 32];
     challenge.copy_from_slice(&challenge_vec);
 
-
     //log req details
     println!("Challenge: {:?}", challenge);
     println!("Cutoff time: {}", req.cutoff_time);
@@ -84,7 +83,6 @@ async fn handle_mining_request(req: MiningRequest, mining_state: Arc<TokioMutex<
     println!("Min difficulty: {}", req.min_difficulty);
     println!("Start nonce: {}", req.start_nonce);
     println!("End nonce: {}", req.end_nonce);
-
 
     let solution = find_hash_par(
         challenge,
@@ -114,15 +112,17 @@ async fn find_hash_par(
 ) -> MiningResponse {
     let progress_bar = Arc::new(spinner::new_progress_bar());
     progress_bar.set_message("Mining...");
+    let total_hashes = Arc::new(AtomicU64::new(0));
     let handles: Vec<_> = (0..threads)
         .map(|i| {
             std::thread::spawn({
                 let challenge = challenge.clone();
                 let progress_bar = progress_bar.clone();
                 let stop_flag = stop_flag.clone();
+                let total_hashes = total_hashes.clone();
                 let mut memory = equix::SolverMemory::new();
                 move || {
-                    let timer = Instant::now();
+                    let timer = std::time::Instant::now();
                     let range_size = (end_nonce - start_nonce) / threads;
                     let thread_start_nonce = start_nonce + range_size * i;
                     let thread_end_nonce = thread_start_nonce + range_size;
