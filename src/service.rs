@@ -39,7 +39,6 @@ pub async fn start_service() {
         stop_flag: Arc::new(AtomicBool::new(false)),
         is_mining: false,
     }));
-
     let mine_route = warp::post()
         .and(warp::path("mine"))
         .and(warp::body::json())
@@ -76,7 +75,6 @@ async fn handle_mining_request(req: MiningRequest, mining_state: Arc<TokioMutex<
     let mut challenge = [0u8; 32];
     challenge.copy_from_slice(&challenge_vec);
 
-
     //log req details
     println!("Challenge: {:?}", challenge);
     println!("Cutoff time: {}", req.cutoff_time);
@@ -84,7 +82,6 @@ async fn handle_mining_request(req: MiningRequest, mining_state: Arc<TokioMutex<
     println!("Min difficulty: {}", req.min_difficulty);
     println!("Start nonce: {}", req.start_nonce);
     println!("End nonce: {}", req.end_nonce);
-
 
     let solution = find_hash_par(
         challenge,
@@ -107,7 +104,7 @@ async fn find_hash_par(
     challenge: [u8; 32],
     cutoff_time: u64,
     threads: u64,
-    min_difficulty: u32,
+    min_difficulty: u32,  // This will be ignored
     start_nonce: u64,
     end_nonce: u64,
     stop_flag: Arc<AtomicBool>,
@@ -134,6 +131,11 @@ async fn find_hash_par(
                             break;
                         }
 
+                        // Check if we've reached one second before the cutoff time
+                        if timer.elapsed().as_secs() >= cutoff_time.saturating_sub(1) {
+                            break;
+                        }
+
                         if let Ok(hx) = drillx::hash_with_memory(
                             &mut memory,
                             &challenge,
@@ -147,17 +149,11 @@ async fn find_hash_par(
                             }
                         }
 
-                        if nonce % 100 == 0 {
-                            if timer.elapsed().as_secs().ge(&cutoff_time) {
-                                if best_difficulty.ge(&min_difficulty) {
-                                    break;
-                                }
-                            } else if i == 0 {
-                                progress_bar.set_message(format!(
-                                    "Mining... ({} sec remaining)",
-                                    cutoff_time.saturating_sub(timer.elapsed().as_secs()),
-                                ));
-                            }
+                        if nonce % 100 == 0 && i == 0 {
+                            progress_bar.set_message(format!(
+                                "Mining... ({} sec remaining)",
+                                cutoff_time.saturating_sub(timer.elapsed().as_secs()),
+                            ));
                         }
                     }
 
