@@ -130,8 +130,9 @@ async fn find_hash_par(
                     let mut best_difficulty = 0;
                     let mut best_hash = Hash::default();
                     let mut thread_hashes = 0;
+                    let mut buffer = [0u8; 40]; // Pre-allocate buffer
                     for nonce in thread_start_nonce..thread_end_nonce {
-                        if stop_flag.load(Ordering::SeqCst) {
+                        if stop_flag.load(Ordering::Relaxed) {
                             break;
                         }
 
@@ -150,7 +151,7 @@ async fn find_hash_par(
 
                         thread_hashes += 1;
 
-                        if nonce % 100 == 0 {
+                        if nonce & 0xFF == 0 {
                             if timer.elapsed().as_secs().ge(&cutoff_time) {
                                 if best_difficulty.ge(&min_difficulty) {
                                     break;
