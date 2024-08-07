@@ -9,6 +9,7 @@ use drillx::{
 use hex;
 use tokio::sync::Mutex as TokioMutex;
 use solana_rpc_client::spinner;
+use num_cpus;
 
 #[derive(Deserialize)]
 struct MiningRequest {
@@ -18,6 +19,7 @@ struct MiningRequest {
     min_difficulty: u32,
     start_nonce: u64,
     end_nonce: u64,
+    use_max_threads: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -84,6 +86,14 @@ async fn handle_mining_request(req: MiningRequest, mining_state: Arc<TokioMutex<
     println!("Start nonce: {}", req.start_nonce);
     println!("End nonce: {}", req.end_nonce);
 
+    let thread_count = if req.use_max_threads {
+        num_cpus::get() as u64
+    } else {
+        req.threads
+    };
+
+    println!("Using {} threads", thread_count);
+
     let solution = find_hash_par(
         challenge,
         req.cutoff_time,
@@ -130,7 +140,7 @@ async fn find_hash_par(
                     let mut best_difficulty = 0;
                     let mut best_hash = Hash::default();
                     let mut thread_hashes = 0;
-                    let mut buffer = [0u8; 40]; // Pre-allocate buffer
+                    let _buffer = [0u8; 40];
                     for nonce in thread_start_nonce..thread_end_nonce {
                         if stop_flag.load(Ordering::Relaxed) {
                             break;
