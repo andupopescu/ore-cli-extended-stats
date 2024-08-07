@@ -10,6 +10,7 @@ use hex;
 use tokio::sync::Mutex as TokioMutex;
 use solana_rpc_client::spinner;
 use num_cpus;
+use crossbeam::thread;
 use rand::Rng;
 
 #[derive(Deserialize)]
@@ -124,77 +125,69 @@ async fn find_hash_par(
     let progress_bar = Arc::new(spinner::new_progress_bar());
     progress_bar.set_message("Mining...");
     let total_hashes = Arc::new(AtomicU64::new(0));
-    let handles: Vec<_> = (0..threads)
-        .map(|i| {
-            std::thread::spawn({
-                let challenge = challenge.clone();
-                let progress_bar = progress_bar.clone();
-                let stop_flag = stop_flag.clone();
-                let total_hashes = total_hashes.clone();
+
+    let (best_nonce, best_difficulty, best_hash) = thread::scope(|s| {
+        let mut handles = Vec::with_capacity(threads as usize);
+
+        for i in 0..threads {
+            let challenge = challenge.clone();
+            let progress_bar = progress_bar.clone();
+            let stop_flag = stop_flag.clone();
+            let total_hashes = total_hashes.clone();
+
+            handles.push(s.spawn(move |_| {
+                let timer = std::time::Instant::now();
+                let range_size = (end_nonce - start_nonce) / threads;
+                let thread_start_nonce = start_nonce + range_size * i;
+                let thread_end_nonce = thread_start_nonce + range_size;
+                let mut rng = rand::thread_rng();
                 let mut memory = equix::SolverMemory::new();
-                move || {
-                    let timer = std::time::Instant::now();
-                    let range_size = (end_nonce - start_nonce) / threads;
-                    let thread_start_nonce = start_nonce + range_size * i;
-                    let thread_end_nonce = thread_start_nonce + range_size;
-                    let mut rng = rand::thread_rng();
-                    let mut best_nonce = thread_start_nonce;
-                    let mut best_difficulty = 0;
-                    let mut best_hash = Hash::default();
-                    let mut thread_hashes = 0;
-                    let _buffer = [0u8; 40];
-                    for nonce in thread_start_nonce..thread_end_nonce {
-                        if stop_flag.load(Ordering::Relaxed) {
-                            break;
-                        }
-                        let nonce = rng.gen_range(thread_start_nonce..thread_end_nonce);
-                        if let Ok(hx) = drillx::hash_with_memory(
-                            &mut memory,
-                            &challenge,
-                            &nonce.to_le_bytes(),
-                        ) {
-                            let difficulty = hx.difficulty();
-                            if difficulty.gt(&best_difficulty) {
-                                best_nonce = nonce;
-                                best_difficulty = difficulty;
-                                best_hash = hx;
-                            }
-                        }
+                let mut best_nonce = thread_start_nonce;
+                let mut best_difficulty = 0;
+                let mut best_hash = Hash::default();
+                let mut thread_hashes = 0;
 
-                        thread_hashes += 1;
+                for _ in 0..range_size {
+                    if stop_flag.load(Ordering::Relaxed) {
+                        break;
+                    }
 
-                        if thread_hashes % 256 == 0 {
-                            if timer.elapsed().as_secs().ge(&cutoff_time) {
-                                if best_difficulty.ge(&min_difficulty) {
-                                    break;
-                                }
-                            } else if i == 0 {
-                                progress_bar.set_message(format!(
-                                    "Mining... ({} sec remaining)",
-                                    cutoff_time.saturating_sub(timer.elapsed().as_secs()),
-                                ));
-                            }
+                    let nonce = rng.gen_range(thread_start_nonce..thread_end_nonce);
+                    if let Ok(hx) = drillx::hash_with_memory(
+                        &mut memory,
+                        &challenge,
+                        &nonce.to_le_bytes(),
+                    ) {
+                        let difficulty = hx.difficulty();
+                        if difficulty.gt(&best_difficulty) {
+                            best_nonce = nonce;
+                            best_difficulty = difficulty;
+                            best_hash = hx;
                         }
                     }
-                    total_hashes.fetch_add(thread_hashes, Ordering::Relaxed);
-                    (best_nonce, best_difficulty, best_hash)
-                }
-            })
-        })
-        .collect();
 
-    let mut best_nonce = 0;
-    let mut best_difficulty = 0;
-    let mut best_hash = Hash::default();
-    for h in handles {
-        if let Ok((nonce, difficulty, hash)) = h.join() {
-            if difficulty > best_difficulty {
-                best_difficulty = difficulty;
-                best_nonce = nonce;
-                best_hash = hash;
-            }
+                    thread_hashes += 1;
+
+                    if thread_hashes % 256 == 0 {
+                        if timer.elapsed().as_secs().ge(&cutoff_time) {
+                            if best_difficulty.ge(&min_difficulty) {
+                                break;
+                            }
+                        } else if i == 0 {
+                            progress_bar.set_message(format!(
+                                "Mining... ({} sec remaining)",
+                                cutoff_time.saturating_sub(timer.elapsed().as_secs()),
+                            ));
+                        }
+                    }
+                }
+                total_hashes.fetch_add(thread_hashes, Ordering::Relaxed);
+                (best_nonce, best_difficulty, best_hash)
+            }));
         }
-    }
+
+        handles.into_iter().map(|h| h.join().unwrap()).max_by_key(|&(_, difficulty, _)| difficulty).unwrap()
+    }).unwrap();
 
     let total_hashes_done = total_hashes.load(Ordering::Relaxed);
     println!("Total hashes performed: {}", total_hashes_done);
