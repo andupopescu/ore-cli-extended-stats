@@ -10,6 +10,7 @@ use hex;
 use tokio::sync::Mutex as TokioMutex;
 use solana_rpc_client::spinner;
 use num_cpus;
+use rand::Rng;
 
 #[derive(Deserialize)]
 struct MiningRequest {
@@ -136,6 +137,7 @@ async fn find_hash_par(
                     let range_size = (end_nonce - start_nonce) / threads;
                     let thread_start_nonce = start_nonce + range_size * i;
                     let thread_end_nonce = thread_start_nonce + range_size;
+                    let mut rng = rand::thread_rng();
                     let mut best_nonce = thread_start_nonce;
                     let mut best_difficulty = 0;
                     let mut best_hash = Hash::default();
@@ -145,7 +147,7 @@ async fn find_hash_par(
                         if stop_flag.load(Ordering::Relaxed) {
                             break;
                         }
-
+                        let nonce = rng.gen_range(thread_start_nonce..thread_end_nonce);
                         if let Ok(hx) = drillx::hash_with_memory(
                             &mut memory,
                             &challenge,
@@ -161,7 +163,7 @@ async fn find_hash_par(
 
                         thread_hashes += 1;
 
-                        if nonce & 0xFF == 0 {
+                        if thread_hashes % 256 == 0 {
                             if timer.elapsed().as_secs().ge(&cutoff_time) {
                                 if best_difficulty.ge(&min_difficulty) {
                                     break;
