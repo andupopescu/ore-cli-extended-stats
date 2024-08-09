@@ -2781,6 +2781,7 @@ dependencies = [
  "ore-api",
  "ore-utils",
  "rand 0.8.5",
+ "rayon",
  "reqwest",
  "serde",
  "serde_json",

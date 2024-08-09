@@ -12,6 +12,7 @@ use solana_rpc_client::spinner;
 use num_cpus;
 use crossbeam::thread;
 use rand::Rng;
+use std::time::Instant;
 
 #[derive(Deserialize)]
 struct MiningRequest {
@@ -126,6 +127,8 @@ async fn find_hash_par(
     progress_bar.set_message("Mining...");
     let total_hashes = Arc::new(AtomicU64::new(0));
 
+    let start_time = Instant::now();
+
     let (best_nonce, best_difficulty, best_hash) = thread::scope(|s| {
         let mut handles = Vec::with_capacity(threads as usize);
 
@@ -189,8 +192,19 @@ async fn find_hash_par(
         handles.into_iter().map(|h| h.join().unwrap()).max_by_key(|&(_, difficulty, _)| difficulty).unwrap()
     }).unwrap();
 
+    let elapsed_time = start_time.elapsed();
     let total_hashes_done = total_hashes.load(Ordering::Relaxed);
+    
+    // Calculate hash rate
+    let hash_rate = if elapsed_time.as_secs() > 0 {
+        total_hashes_done as f64 / elapsed_time.as_secs() as f64
+    } else {
+        total_hashes_done as f64 / elapsed_time.as_secs_f64()
+    };
+
     println!("Total hashes performed: {}", total_hashes_done);
+    println!("Time elapsed: {:.2} seconds", elapsed_time.as_secs_f64());
+    println!("Hash rate: {:.2} H/s", hash_rate);
 
     progress_bar.finish_with_message(format!(
         "Best hash: {} (difficulty: {})",
@@ -206,7 +220,6 @@ async fn find_hash_par(
         url: "https://equix.io".to_string(),
     }
 }
-
 #[derive(Debug)]
 struct InvalidChallenge;
 impl warp::reject::Reject for InvalidChallenge {}
